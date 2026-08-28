@@ -1,0 +1,446 @@
+1. 数据来源 - 准备好完成课程设计所需数据。数据量小直接提交到仓库中 /data 目录下；公开数据集可以给出数据集来源链接（一定要确保链接有效），并在 /data 目录下写出说明，同时要做在项目 readme.md 中说明；自建大的数据集要在 huggingface 或 modelscope 开源，并通公开数据集一样要求，但要注明为自建数据集；私有敏感数据不建议用于课程设计。
+2. 数据预处理 - 根据项目需要，完成对原始数据的预处理工作，完成相关预处理程序，/data 下要更新预处理后的数据文件（或索引）。在项目 readme.md 中同步更新相关工作。
+3. AI 工具提示词追溯 - 创建一个 prompt 目录，将与 AI 交流的记录 (通常是 json 文件) 添加到这个目录下，并在之后的每个阶段同步更新，注意要在上下文压缩前及时备份 prompt 记录并添加。
+完成后群内接龙，需继续使用第一阶段相同仓库，不要重新创建新仓库。本阶段无需群内接龙，以仓库 git 记录时间为准。都什么意思
+
+# 一、整体一句话总结
+
+今天开始做**数据准备阶段**，**本周日晚上 24:00（也就是周一 0 点）之前做完**。
+全程继续用你们第一阶段建好的那个 Git 仓库，**不要新建仓库**。老师不看群里接龙，只看你仓库里面 Git 提交记录的时间有没有在截止日期前。
+
+# 二、3 项考核内容逐条大白话解释
+
+## 1. 数据来源：准备好课程设计要用的数据
+
+> 
+> 你的项目：滚动轴承振动信号，大概率用 **CWRU 公开轴承数据集**，属于公开数据集。
+> 分 3 种情况，你选一种：
+
+### 情况 A：数据很小（文件不大）
+
+直接把原始数据文件上传到你仓库里面的 `/data` 文件夹里。
+
+```
+你的仓库/data/   ←放原始数据
+```
+
+### 情况 B：公开数据集（CWRU、网上下载好的现成数据集）
+
+不要把庞大原始数据上传 git 仓库！
+
+1. `/data`文件夹里面新建一个说明文档，例如 `dataset_readme.md`，写上数据集下载链接（链接必须能打开、有效）
+2. 同时在项目最外层的 `readme.md`（项目主页说明文件），也要写上数据集来源、链接。
+
+### 情况 C：自己采集自建的大数据集
+
+把数据集上传到 Hugging Face 或者 ModelScope（魔搭）平台公开分享。
+然后仓库 /data 文件夹、外层 readme 写上数据集链接，并且**标注清楚：自建数据集**。
+
+### ❌不推荐：隐私、敏感数据，别拿来做课程设计。
+
+---
+
+## 2. 数据预处理：写代码清洗原始数据
+
+预处理就是：降噪、切片、归一化、划分训练集测试集、去掉坏样本… 这类对原始振动信号加工的操作。
+要求：
+
+1. 写出**预处理的 Python 代码**（放到代码文件夹，比如`/scripts`或者`/src`）
+2. 处理完之后生成预处理之后的数据：
+   - 小文件：放到`/data`目录下
+   - 文件太大：不上传文件，就在 /data 下放索引、说明文件，告诉别人预处理后的数据在哪下载
+3. 外层项目`readme.md`文档更新：写上你做了哪些预处理操作。
+
+> 
+> 简单理解：原始数据→运行你的预处理代码→得到干净可用的数据。并且文档记录清楚这件事。
+
+---
+
+## 3. AI 工具提示词追溯：新建 `/prompt` 文件夹，备份你和 AI 的聊天记录
+
+1. 在你的仓库根目录新建一个名字叫 `prompt` 的文件夹
+
+```
+你的仓库/prompt/
+```
+
+2. 把你跟豆包 / ChatGPT 等 AI 的对话记录导出成 **json 文件**，放到这个文件夹里面
+3. **以后每个阶段做完任务，都要往这里新增、更新聊天记录**
+4. ⚠️重点提醒：如果你用的 AI 会自动压缩上下文（对话太长旧内容会消失），**提前导出备份**，不要等历史对话没了才想起保存。
+
+# 三、推荐你的仓库目录参考（适配你的轴承项目）
+
+```
+你的项目仓库根目录
+├─ readme.md          # 项目主文档，更新数据集、预处理说明
+├─ /data              # 数据文件夹，原始数据/数据集说明/预处理后数据
+│   └─ dataset_info.md # 数据集来源说明、下载链接
+├─ /prompt            # 新建！存放AI聊天记录json文件
+│   └─ stage2_prompts.json # 本阶段对话记录
+└─ /src               # 放预处理代码、模型代码
+```
+
+# 四、几个非常关键的注意点
+
+1. **仓库不变**：继续用第一阶段的仓库，绝对不要新建一个仓库
+2. **不需要群里接龙交作业**！老师只看你 Git 提交记录的时间，所有文件必须在周日 24:00 前 push 上传到远程仓库
+3. 所有改动做完一定要执行 `git add → git commit → git push`，上传到云端仓库，不然老师看不到你的成果
+4. readme.md 每次改动都要同步更新，不能只上传代码、数据，文档不动。
+
+1. 数据来源-准备好完成课程设计所需数据。数据量小直接提交到仓库中/data目录下；公开数据集可以给出数据集来源链接（一定要确保链接有效），并在/data目录下写出说明，同时要做在项目readme.md中说明；2. 数据预处理-根据项目需要，完成对原始数据的预处理工作，完成相关预处理程序，/data下要更新预处理后的数据文件（或索引）。在项目readme.md中同步更新相关工作根据以上内容，帮我完成一下数据的转换和清理等工作，写出代码
+khr/
+├── data/
+│   ├── raw/                # 原始CSV振动文件（8个原始文件）
+│   │   normal.csv
+│   │   98normal.csv
+│   │   inner.csv
+│   │   106inner.csv
+│   │   outer.csv
+│   │   131out.csv
+│   │   ball.csv
+│   │   119ball.csv
+│   ├── processed/          # 清洗、预处理后数据集
+│   └── readme_data.md      # 数据集说明文档
+├── algorithm/
+├── backend/
+├── frontend/
+└── readme.md               # 项目总说明
+import os
+import numpy as np
+from sklearn.model_selection import train_test_split
+# 复用项目已有的all_data_tool工具
+from all_data_tool import (
+    build_dataset_from_file,
+    fit_and_save_scaler,
+    OUT_CSV_FOLDER,
+    PROC_DATA_DIR
+)
+
+# ----------------------配置文件标签对应关系----------------------
+FILE_LABEL_LIST = [
+    ("normal.csv",     0),
+    ("98normal.csv",   0),
+    ("inner.csv",      1),
+    ("106inner.csv",   1),
+    ("outer.csv",      2),
+    ("131out.csv",     2),
+    ("ball.csv",       3),
+    ("119ball.csv",    3),
+]
+LABEL_NAME_MAP = {0: "正常", 1: "内圈故障", 2: "外圈故障", 3: "滚动体故障"}
+
+
+def main():
+    all_features = []
+    all_labels = []
+
+    print("====开始数据集预处理====")
+    for filename, label in FILE_LABEL_LIST:
+        csv_path = os.path.join(OUT_CSV_FOLDER, filename)
+        if not os.path.exists(csv_path):
+            print(f"[警告] 文件不存在跳过：{filename}")
+            continue
+
+        print(f"处理 {filename} 标签={label}({LABEL_NAME_MAP[label]})")
+        feat_arr, y_arr = build_dataset_from_file(csv_path, label=label)
+        all_features.append(feat_arr)
+        all_labels.append(y_arr)
+
+    # 拼接全部样本
+    X = np.concatenate(all_features, axis=0)
+    y = np.concatenate(all_labels, axis=0)
+
+    print(f"\n全部样本总数量：{X.shape[0]}，特征维度：{X.shape[1]}")
+
+    # 分层划分训练集、测试集 8:2
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+    print(f"训练集样本：{X_train.shape[0]}")
+    print(f"测试集样本：{X_test.shape[0]}")
+
+    # 训练标准化器，保存scaler.pkl到processed目录
+    fit_and_save_scaler(X_train)
+    print("已完成StandardScaler拟合，保存scaler.pkl")
+
+    # 保存npy数据集到 /data/processed
+    np.save(os.path.join(PROC_DATA_DIR, "X_train.npy"), X_train)
+    np.save(os.path.join(PROC_DATA_DIR, "y_train.npy"), y_train)
+    np.save(os.path.join(PROC_DATA_DIR, "X_test.npy"), X_test)
+    np.save(os.path.join(PROC_DATA_DIR, "y_test.npy"), y_test)
+
+    print("\n====预处理执行完成，输出保存在data/processed====")
+
+
+if __name__ == "__main__":
+    main()
+## 完整预处理执行流程（和你现有项目逻辑对齐）
+
+1. **mat 文件转 csv（由 all_data_tool 完成）**
+
+```
+cd algorithm
+python all_data_tool.py
+```
+
+> 
+> 读取`data/mat_raw`下`.mat`，提取 DE_time/FE_time 信号输出 csv 到`data/raw`。
+
+2. **执行数据集预处理脚本**
+
+```
+python data_preprocess.py
+```
+
+执行逻辑：
+
+- 遍历`data/raw`下 8 个 csv 振动文件
+- 调用`build_dataset_from_file`：读取 csv→滑动平均滤波→滑窗切片 256 / 步长 128 →提取**时域 + 频域联合特征**
+- 拼接全部样本，分层划分训练集、测试集
+- 使用训练集拟合`StandardScaler`，保存`scaler.pkl`
+- 将`X_train/y_train/X_test/y_test`保存 npy 文件到`data/processed`
+
+## /data/readme_data.md 更新（适配当前代码）
+
+```
+# 数据集说明
+## 1.数据来源
+滚动轴承振动数据集，包含4种运行工况：正常、内圈故障、外圈故障、滚动体故障。
+原始mat文件存放于`data/mat_raw`。
+
+## 2.目录说明
+- `/data/mat_raw/`：原始mat数据集
+- `/data/raw/`：mat转换后的csv振动文件，单列为vibration振动信号
+- `/data/processed/`：预处理输出数据集
+
+## 3.文件标签映射
+|文件名|标签|工况说明|
+|---|---|---|
+|normal.csv|0|正常状态|
+|98normal.csv|0|正常状态|
+|inner.csv|1|内圈故障|
+|106inner.csv|1|内圈故障|
+|outer.csv|2|外圈故障|
+|131out.csv|2|外圈故障|
+|ball.csv|3|滚动体故障|
+|119ball.csv|3|滚动体故障|
+
+## 4.预处理流程
+>工具脚本：`algorithm/all_data_tool.py`、`algorithm/data_preprocess.py`
+1. mat转csv：读取mat中的DE_time/FE_time振动信号输出csv；
+2. 读取csv振动信号；
+3. 滑动平均滤波降噪；
+4. 滑动窗口切分：窗口256，步长128；
+5. 特征提取：
+    - 时域特征：均值、方差、均方根、峰值、峭度、偏度
+    - 频域特征：FFT幅值均值、方差、最大值
+6. 全部样本拼接，分层按8:2划分训练集、测试集；
+7. 基于训练集拟合StandardScaler标准化，保存scaler.pkl。
+
+## 5.processed输出文件
+- X_train.npy：训练集特征
+- y_train.npy：训练集标签
+- X_test.npy：测试集特征
+- y_test.npy：测试集标签
+- scaler.pkl：标准化缩放器，预测推理时加载使用
+```
+
+## 项目根目录 readme.md 增加段落
+
+```
+## 2 数据集与数据预处理
+原始mat振动数据存放于`data/mat_raw`。
+1. mat转csv：运行`algorithm/all_data_tool.py`，将mat文件转换为csv，输出至`data/raw`。
+2. 数据集预处理：运行`algorithm/data_preprocess.py`，完成滤波、滑窗切片、时域+频域特征提取、数据集划分、标准化器拟合，处理结果输出到`data/processed`。
+详细数据集说明查看：`/data/readme_data.md`。
+
+
+我想下载数据集，请给我一个链接
+
+## 一、数据集获取渠道（按优先顺序）
+
+### 渠道 1：官方网站（原始 mat 文件）
+
+官网地址：[http://csegroups.case.edu/bearingdatacenter/home](http://csegroups.case.edu/bearingdatacenter/home)
+包含 4 大类数据：
+
+1. Normal Baseline Data 正常基线数据
+2. 12k Drive End Bearing Fault Data 12kHz 驱动端故障
+3. 48k Drive End Bearing Fault Data 48kHz 驱动端故障
+4. Fan‑End Bearing Fault Data 风扇端故障
+
+> 
+> 缺点：国内访问经常卡顿，全部下载体积较大；输出是`.mat`，不能直接上传 Web 页面。
+
+### 渠道 2：GitHub 开源镜像（推荐，国内访问）
+
+1. 完整 mat 数据集镜像：[https://github.com/yyxyz/CaseWesternReserveUniversityData](https://github.com/yyxyz/CaseWesternReserveUniversityData)
+2. Python 工具包，可自动拉取官方数据、做切片：`ryanjung94/cwru_py3`，代码可以自动下载、划分训练测试集。
+
+请将第三阶段完成
+
+# 第三阶段：数据处理与算法模型开发
+
+> 
+> 对应课程设计任务书进度：数据资源整理、详细开发前期；本阶段完成数据集预处理、特征工程、三大智能算法模块编码、模型训练、单元测试验证；产出可被后端调用的独立算法组件，为第四阶段系统集成做准备。
+
+## 3.1 阶段目标
+
+1. 完成 CWRU 滚动轴承数据集的导入、格式转换、数据清洗与降噪；
+2. 实现振动信号时域、频域特征提取，构建模型训练数据集；
+3. 分别完成**故障分类网络、LSTM 剩余寿命预测、自编码器异常检测**三个算法模块编码实现；
+4. 完成模型训练、参数调试、精度评估，输出训练完成的模型权重文件与标准化器；
+5. 编写算法单元测试脚本，验证各算法输入输出接口可用性；
+6. Git 小步提交归档，保存本阶段全部提示词过程档案。
+
+## 3.2 数据集处理实现
+
+### 3.2.1 数据集来源
+
+采用凯斯西储大学 CWRU 滚动轴承公开振动数据集，原始格式为`.mat`MATLAB 二进制文件，包含正常工况、内圈故障、外圈故障、滚动体故障的加速度振动时序信号。
+
+### 3.2.2 数据处理流程
+
+1. **原始数据读取**：读取`data/mat_raw`目录下全部`.mat`文件，提取 DE 驱动端振动时序信号。
+2. **格式转换**：将 mat 二进制文件批量转换为 CSV 时序文件，输出至`data/raw`文件夹，每一个 csv 一列存储振动加速度数值。
+3. **样本筛选与重命名**：从转换后的 csv 中选取 4 类样本，分别命名`normal.csv`（正常）、`inner.csv`（内圈故障）、`outer.csv`（外圈故障）、`ball.csv`（滚动体故障）。
+4. **信号预处理**：滑动均值滤波完成简单降噪；采用滑动窗口对长时序信号切分，窗口大小 256，步长 128，切割得到大量信号片段样本。
+5. **特征工程**
+   - 时域特征：均值、方差、均方根、峰值、峭度、偏度（6 维）
+   - 频域特征：FFT 变换后频谱均值、频谱方差、频谱最大值（3 维）
+   - 组合得到每条样本**9 维特征向量**，作为神经网络输入。
+6. **数据集标准化**：使用`StandardScaler`对全部训练特征做标准化处理，保存 scaler 到`data/processed/scaler.pkl`，预测阶段复用同一套标准化参数。
+
+> 
+> 代码实现全部封装于`algorithm/all_data_tool.py`，对外提供接口函数：
+
+- `run_mat_convert()`：mat 批量转 csv
+- `build_dataset_from_file()`：读取 csv，输出切分后的特征数据集
+- `fit_and_save_scaler()`：拟合并保存标准化器
+- `load_scaler()`：加载标准化器供预测使用
+
+### 3.2.3 目录与文件产出
+
+```
+data
+├─ mat_raw      #原始CWRU *.mat数据集
+├─ raw          #转换输出csv：normal.csv、inner.csv等
+└─ processed
+    └─ scaler.pkl #特征标准化转换器
+### 3.3.4 模型权重输出目录
+
+```
+data/model_weight
+├─ fault_cls.pth
+├─ ae_anomaly.pth
+├─ lstm_rul.pth
+└─ ae_threshold.npy
+```
+# all_data_tool.py 合并：mat转csv + 数据预处理
+import os
+import scipy.io
+import pandas as pd
+import numpy as np
+from scipy.fft import fft
+from sklearn.preprocessing import StandardScaler
+import joblib
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MAT_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "..", "data", "mat_raw"))
+OUT_CSV_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "..", "data", "raw"))
+PROC_DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "data", "processed"))
+SCALER_SAVE_PATH = os.path.join(PROC_DATA_DIR, "scaler.pkl")
+WINDOW_SIZE = 256
+
+os.makedirs(MAT_FOLDER, exist_ok=True)
+os.makedirs(OUT_CSV_FOLDER, exist_ok=True)
+os.makedirs(PROC_DATA_DIR, exist_ok=True)
+
+# ===================== mat -> csv 转换部分 =====================
+def mat_to_csv(mat_path, out_csv_path):
+    mat_dict = scipy.io.loadmat(mat_path)
+    de_keys = [k for k in mat_dict.keys() if ("DE_time" in str(k) or "FE_time" in str(k))]
+    if len(de_keys) == 0:
+        print(f"跳过:{mat_path} 未找到DE_time/FE_time信号")
+        return False
+    key = de_keys[0]
+    signal = mat_dict[key].flatten()
+    df = pd.DataFrame({"vibration": signal})
+    df.to_csv(out_csv_path, index=False)
+    print(f"转换成功 {os.path.basename(mat_path)} -> {os.path.basename(out_csv_path)}")
+    return True
+
+def run_mat_convert():
+    """执行全部mat文件转csv"""
+    file_list = [f for f in os.listdir(MAT_FOLDER) if f.lower().endswith(".mat")]
+    print(f"检测到mat文件数量:{len(file_list)}")
+    for fname in file_list:
+        mat_file = os.path.join(MAT_FOLDER, fname)
+        base = os.path.splitext(fname)[0]
+        csv_file = os.path.join(OUT_CSV_FOLDER, f"{base}.csv")
+        mat_to_csv(mat_file, csv_file)
+    print("==== mat全部转换完成 ====\n")
+
+# ===================== 数据预处理部分 =====================
+def load_csv_signal(file_path: str) -> np.ndarray:
+    df = pd.read_csv(file_path)
+    sig = df.iloc[:, 0].dropna().values
+    return sig
+
+def signal_filter(signal: np.ndarray, win=5):
+    return np.convolve(signal, np.ones(win) / win, mode="same")
+
+def extract_time_feature(sig: np.ndarray):
+    mean_val = np.mean(sig)
+    var_val = np.var(sig)
+    rms = np.sqrt(np.mean(sig ** 2))
+    peak = np.max(np.abs(sig))
+    kurt = np.mean((sig - mean_val) ** 4) / (var_val ** 2 + 1e-8)
+    skew = np.mean((sig - mean_val) ** 3) / ((np.sqrt(var_val)) ** 3 + 1e-8)
+    return np.array([mean_val, var_val, rms, peak, kurt, skew])
+
+def extract_freq_feature(sig: np.ndarray):
+    fft_sig = np.abs(fft(sig))[:len(sig) // 2]
+    return np.array([np.mean(fft_sig), np.var(fft_sig), np.max(fft_sig)])
+
+def extract_all_feature(sig: np.ndarray):
+    t_feat = extract_time_feature(sig)
+    f_feat = extract_freq_feature(sig)
+    return np.concatenate([t_feat, f_feat])
+
+def sliding_window_sample(signal: np.ndarray, window=WINDOW_SIZE, step=128):
+    samples = []
+    for i in range(0, len(signal) - window, step):
+        seg = signal[i:i + window]
+        samples.append(seg)
+    return np.array(samples)
+
+def build_dataset_from_file(csv_path: str, label=None):
+    sig = load_csv_signal(csv_path)
+    sig = signal_filter(sig)
+    seg_list = sliding_window_sample(sig)
+    feat_list = []
+    for seg in seg_list:
+        feat = extract_all_feature(seg)
+        feat_list.append(feat)
+    feat_arr = np.array(feat_list)
+    if label is not None:
+        return feat_arr, np.full(feat_arr.shape[0], label)
+    return feat_arr
+
+def fit_and_save_scaler(X_train):
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+    joblib.dump(scaler, SCALER_SAVE_PATH)
+    return scaler
+
+def load_scaler():
+    return joblib.load(SCALER_SAVE_PATH)
+
+if __name__ == "__main__":
+    # 先执行mat转csv
+    run_mat_convert()
+    print("all_data_tool 工具模块加载完毕，可以被其他py文件import调用")
+```
+
+```

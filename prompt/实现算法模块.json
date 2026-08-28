@@ -1,0 +1,657 @@
+方案设计
+1 功能需求分析
+1.1 业务功能需求
+结合工厂轴承运维实际场景，系统围绕设备智能运维需求，搭建预测性维护监测平台，具体业务需求如下表所示：
+序号 功能模块 功能描述 1 数据上传与管理 支持用户上传轴承振动时序 CSV 数据文件，系统自动存储原始数据，完成数据解析、清洗、归一化等预处理，为故障诊断、寿命预测算法提供标准化数据集。 2 故障智能分类诊断 对振动时序数据进行特征工程处理，利用机器学习分类算法识别轴承四种运行状态：正常、内圈故障、外圈故障、滚动体故障，自动输出结构化故障诊断结果。 3 剩余寿命预测 基于 LSTM 时序深度学习模型，挖掘轴承振动退化时序规律，动态拟合设备老化趋势，输出轴承剩余使用寿命预估数值，并给出对应的维护时间建议。 4 未知异常告警 采用自编码器无监督学习模型，仅依靠正常样本训练，通过信号重构误差识别从未见过的异常振动波形，实现未知故障、突发设备异常实时告警。 5 数据可视化与历史查询 实现振动原始波形、特征曲线、诊断结果可视化展示，支持用户查询历史诊断记录、寿命预测记录、异常告警记录，构建完整运维数据台账。
+1.2 开发流程需求
+严格遵循课程 AI 辅助规格驱动开发规范，全程使用 Git + GitHub 进行版本管控，坚持小步迭代、频繁提交。完整保存豆包 AI 提示词日志、代码审查记录、Bug 调试与修正过程，保证项目开发过程全程可追溯、可核查，满足课程过程性考核要求。
+2 方案论证
+2.1 场景可行性论证
+滚动轴承是风机、机床、输送设备等工业旋转机械的核心易损部件，传统定期维修模式普遍存在 “过维修浪费成本、欠维修导致停机故障” 的问题。基于振动信号的预测性维护是目前智能制造设备运维的主流落地方向，场景真实、工程价值高，完全贴合本课程智能技术落地应用的培养目标。
+2.2 技术可行性论证
+本项目所用技术均为本学期及上学期所学核心课程技术，包含机器学习分类、深度学习时序预测、无监督异常检测、Web 前后端开发、数据库开发等成熟技术。开发阶段依托豆包大模型（Seed） 配合 Trae AI IDE 完成规格拆解、代码生成、代码审查与 Bug 调试，技术栈成熟、难度适配课程设计要求，无技术壁垒。
+2.3 数据可行性论证
+项目采用 CWRU 凯斯西储大学公开轴承振动数据集，数据为公开免费的 CSV 时序数据，包含正常工况、单类故障、全生命周期退化数据，数据维度完整、样本量大、行业认可度高，完全满足模型训练、测试、系统调试需求，无需企业私密数据。
+3 总体方案规划
+3.1 核心技术栈
+类别 具体内容 开发工具 Trae AI IDE、VSCode、Git、GitHub 底层辅助大模型 豆包（字节 Seed 大模型） 后端技术 Python、FastAPI、PyTorch、Pandas、NumPy 前端技术 HTML、CSS、JavaScript、数据可视化插件 数据库 MySQL 核心算法 时序特征工程、机器学习故障分类、LSTM 剩余寿命预测、自编码器异常检测
+3.2 外部资源配置
+数据集资源：CWRU 滚动轴承公开振动数据集
+代码托管资源：GitHub 远程代码仓库
+环境资源：本地 Python 运行环境、MySQL 数据库、Trae AI 开发环境
+3.3 系统模块方案
+模块名称 模块定位 核心工作内容 前端 UI 模块 人机交互展示层 提供文件上传入口、振动波形可视化、诊断结果展示、寿命数据展示、异常弹窗告警、历史数据查询功能，界面轻量化、适配工业运维操作。 后端服务模块 业务逻辑调度层 基于 FastAPI 搭建接口服务，负责接收前端请求、解析振动数据、调用算法模块、读写数据库、返回诊断与预测结果，统筹全系统业务流程。 数据库模块 数据持久化存储层 设计设备信息表、原始振动数据表、故障诊断结果表、寿命预测表、异常告警记录表，实现所有业务数据结构化存储与溯源。 智能算法模块 系统核心计算层 独立封装三大算法：故障多分类算法识别已知故障、LSTM 时序算法预测剩余寿命、自编码器算法识别未知异常，为后端提供智能分析能力。
+4 技术路线
+本项目采用 规格驱动 AI 开发 + 迭代调试 的工程化技术路线，依托豆包大模型辅助全流程开发，具体实施步骤如下：
+序号 开发阶段 具体工作内容 1 需求梳理与任务拆解 梳理系统功能需求与技术指标，借助豆包 AI 完成项目规格定义，将项目拆解为前端、后端、数据库、算法四大独立子任务，细化开发细则。 2 环境搭建与数据预处理 搭建 Python、MySQL、Git 开发环境，下载 CWRU 数据集，完成数据清洗、降噪、归一化、特征提取，构建标准化训练数据集。 3 算法模型搭建与训练 分别搭建故障分类模型、LSTM 寿命预测模型、自编码器异常检测模型，完成训练、调优、精度验证，输出可调用算法模块。 4 系统开发与模块集成 开发前端可视化页面与交互功能，编写 FastAPI 后端接口，设计数据库表结构，完成算法模块与业务系统的对接集成。 5 系统联调与代码审查 全功能联调测试，利用豆包 AI 辅助代码审查、Bug 定位与修复，缩小问题范围、迭代优化代码，保证系统稳定运行。 6 版本迭代与过程归档 全程小步 Git 提交迭代，完整留存 AI 对话日志、代码修改记录、调试记录，最终完成系统验收与课程文档整理。
+5 项目进度计划安排
+阶段 阶段任务内容 阶段一：基础学习与工具调研 学习 Vibe Coding 开发思想、提示词工程、上下文工程、规格驱动开发及 AI 代码审查调试流程；调研 Trae AI IDE、通义灵码、Deepseek-Harness 等 AI 开发工具，确定本项目开发工具与底层模型；学习 Git 分布式版本控制原理与常用操作命令；完成项目选题调研，明确业务场景、技术方向、数据集来源与系统整体架构。 阶段二：选题与方案规划 完成项目选题确认、技术调研、需求分析，编写《选题说明.md》《方案设计.md》并推送至 GitHub 仓库，完成开发环境预配置。 阶段三：数据处理与算法模型开发 完成 CWRU 数据集下载与预处理，搭建并训练故障分类、LSTM 剩余寿命预测、自编码器异常检测三大核心算法模型，完成模型测试与参数调优。 阶段四：系统开发与仓库规范集成 在仓库根目录创建 data 目录存放项目所有数据文件，创建 prompt 目录用于分阶段备份 AI 会话 JSON 记录；完成前端 UI、后端接口、数据库开发，实现算法模块与业务系统集成及基础功能调试，阶段性备份 AI 对话日志。 阶段五：系统联调与优化测试 开展系统全功能联调、漏洞修复、界面优化、算法精度优化，完善可视化与异常告警功能，同步更新本阶段 AI 会话备份记录。 阶段六：文档汇总与答辩准备 整理全程 Git 提交记录、AI 提示词日志、代码审查与调试记录，完善全套课程设计文档，汇总项目资料完成答辩准备。
+6 参考文献
+[1] 葛英飞。智能制造技术基础。机械工业出版社，2019. [2] 凯斯西储大学. CWRU Bearing Vibration Dataset [DB/OL]. 公开数据集，2012. [3] 杨杰。人工智能基础。机械工业出版社，2025 请将第三阶段完成
+
+# 第三阶段：数据处理与算法模型开发
+
+> 
+> 对应课程设计任务书进度：数据资源整理、详细开发前期；本阶段完成数据集预处理、特征工程、三大智能算法模块编码、模型训练、单元测试验证；产出可被后端调用的独立算法组件，为第四阶段系统集成做准备。
+
+## 3.1 阶段目标
+
+1. 完成 CWRU 滚动轴承数据集的导入、格式转换、数据清洗与降噪；
+2. 实现振动信号时域、频域特征提取，构建模型训练数据集；
+3. 分别完成**故障分类网络、LSTM 剩余寿命预测、自编码器异常检测**三个算法模块编码实现；
+4. 完成模型训练、参数调试、精度评估，输出训练完成的模型权重文件与标准化器；
+5. 编写算法单元测试脚本，验证各算法输入输出接口可用性；
+6. Git 小步提交归档，保存本阶段全部提示词过程档案。
+
+## 3.2 数据集处理实现
+
+### 3.2.1 数据集来源
+
+采用凯斯西储大学 CWRU 滚动轴承公开振动数据集，原始格式为`.mat`MATLAB 二进制文件，包含正常工况、内圈故障、外圈故障、滚动体故障的加速度振动时序信号。
+
+### 3.2.2 数据处理流程
+
+1. **原始数据读取**：读取`data/mat_raw`目录下全部`.mat`文件，提取 DE 驱动端振动时序信号。
+2. **格式转换**：将 mat 二进制文件批量转换为 CSV 时序文件，输出至`data/raw`文件夹，每一个 csv 一列存储振动加速度数值。
+3. **样本筛选与重命名**：从转换后的 csv 中选取 4 类样本，分别命名`normal.csv`（正常）、`inner.csv`（内圈故障）、`outer.csv`（外圈故障）、`ball.csv`（滚动体故障）。
+4. **信号预处理**：滑动均值滤波完成简单降噪；采用滑动窗口对长时序信号切分，窗口大小 256，步长 128，切割得到大量信号片段样本。
+5. **特征工程**
+   - 时域特征：均值、方差、均方根、峰值、峭度、偏度（6 维）
+   - 频域特征：FFT 变换后频谱均值、频谱方差、频谱最大值（3 维）
+   - 组合得到每条样本**9 维特征向量**，作为神经网络输入。
+6. **数据集标准化**：使用`StandardScaler`对全部训练特征做标准化处理，保存 scaler 到`data/processed/scaler.pkl`，预测阶段复用同一套标准化参数。
+
+> 
+> 代码实现全部封装于`algorithm/all_data_tool.py`，对外提供接口函数：
+
+- `run_mat_convert()`：mat 批量转 csv
+- `build_dataset_from_file()`：读取 csv，输出切分后的特征数据集
+- `fit_and_save_scaler()`：拟合并保存标准化器
+- `load_scaler()`：加载标准化器供预测使用
+
+### 3.2.3 目录与文件产出
+
+```
+data
+├─ mat_raw      #原始CWRU *.mat数据集
+├─ raw          #转换输出csv：normal.csv、inner.csv等
+└─ processed
+    └─ scaler.pkl #特征标准化转换器
+```
+
+## 3.3 三大算法模块设计与实现
+
+算法全部独立封装，每个算法一个独立 py 模块，模块内部包含网络定义、训练函数、预测函数，外部通过 import 调用，不耦合业务代码。
+
+### 3.3.1 故障分类模块 fault_classify.py
+
+**功能定位**：监督学习多分类，识别轴承已知 4 种运行状态：正常、内圈故障、外圈故障、滚动体故障。
+
+1. 网络结构：全连接神经网络；输入 9 维特征，中间两层全连接 + ReLU 激活 + Dropout 防止过拟合，输出 4 分类概率。
+2. 损失函数：交叉熵损失`CrossEntropyLoss`；优化器 Adam；迭代轮次 80。
+3. 训练流程：数据集划分训练集 / 测试集（8:2）；特征标准化；网络训练；测试集评估准确率、混淆矩阵。
+4. 模型持久化：训练完成保存权重 `data/model_weight/fault_cls.pth`。
+5. 对外接口：
+   - `train_fault_model(X,y)`：训练故障分类模型
+   - `predict_fault(feature_np)`：输入特征向量，返回故障类别名称、预测置信度。
+
+### 3.3.2 自编码器异常检测模块 ae_anomaly.py
+
+**功能定位**：无监督异常检测，仅使用**正常轴承样本训练**，实现未知故障、突发异常告警，不需要故障标签。
+
+1. 网络结构自编码器 AE：编码器将 9 维特征压缩到 12 维隐空间，解码器重构回原始 9 维特征。
+2. 训练逻辑：只输入正常样本训练，学习正常状态的数据分布；故障样本重构误差会显著偏大。
+3. 异常阈值：训练结束使用正常样本重构误差的 95% 分位数作为判定阈值，保存至`ae_threshold.npy`。
+4. 模型持久化：保存权重`data/model_weight/ae_anomaly.pth`。
+5. 对外接口：
+   - `train_ae_normal_only(X_normal)`：只用正常样本训练自编码器
+   - `detect_anomaly(feature_np)`：输入特征，返回是否异常布尔标记、重构误差数值。
+
+### 3.3.3 LSTM 剩余寿命预测模块 lstm_rul.py
+
+**功能定位**：时序深度学习，接收窗口序列特征，预估轴承剩余使用寿命 RUL。
+
+> 
+> 说明：CWRU 数据集无完整连续退化全生命周期标签，本课程 demo 使用模拟 RUL 标签完成整套训练‑预测流程；报告中注明该局限，后续可使用 FEMTO 全生命周期数据集替换真实标签。
+
+1. 网络结构：LSTM 循环层（隐藏单元 64），取序列最后时刻输出接入全连接层输出剩余寿命回归值。
+2. 序列构造：将样本特征组装为长度 64 的时序序列样本作为 LSTM 输入。
+3. 损失函数 MSELoss 均方误差；优化器 Adam，迭代 100 轮。
+4. 模型持久化：保存权重`data/model_weight/lstm_rul.pth`。
+5. 对外接口：
+   - `train_rul_model(X_all,rul_all)`：LSTM 寿命模型训练
+   - `predict_rul(seq_feature_np)`：输入序列特征，输出预测剩余寿命数值。
+
+### 3.3.4 模型权重输出目录
+
+```
+data/model_weight
+├─ fault_cls.pth
+├─ ae_anomaly.pth
+├─ lstm_rul.pth
+└─ ae_threshold.npy
+```
+
+## 3.4 算法单元测试实现 test_algorithm.py
+
+编写独立单元测试脚本，作为第三阶段验证入口，按顺序完成整套算法闭环测试：
+
+1. 读取 normal.csv、inner.csv，调用`build_dataset_from_file`提取特征；
+2. 拟合、保存标准化 scaler；
+3. 调用`train_fault_model()`执行故障分类训练，打印准确率、混淆矩阵，调用预测函数输出诊断示例；
+4. 调用`train_ae_normal_only()`使用正常样本训练自编码器，输出异常阈值，对故障样本执行异常检测测试；
+5. 构造模拟 RUL 标签，调用`train_rul_model()`训练 LSTM 寿命预测模型，执行预测演示；
+6. 控制台输出全部运行日志，输出提示`====全部算法模块运行完成，可等待后端FastAPI调用====`。
+
+> 
+> 本单元测试脚本验证三件事：①数据预处理链路正常；②三个模型可完整训练保存权重；③各个对外预测接口可以正常返回结果。
+
+### 第三阶段成功运行示例输出摘要
+
+```
+FaultCls epoch80,loss:0.0445
+故障分类测试集准确率:1.0000
+混淆矩阵:
+ [[754   0]
+ [  0 193]]
+故障诊断结果：内圈故障,置信度=0.992
+AE epoch80,loss:0.1442
+自编码器异常阈值设置为:0.4341
+异常检测：是否异常=True,重构误差=3.3620
+LSTM RUL epoch100,loss:1111.3220
+LSTM预测剩余寿命：30.42
+====全部算法模块运行完成，可等待后端FastAPI调用====
+```
+
+## 3.5 本阶段调试与问题记录（对应报告 AI 出错案例部分）
+
+> 
+> 课程设计要求报告需要写明 AI 生成代码出现的 bug、排查、修复过程，这里整理你实际遇到的问题，可以直接写入报告：
+
+1. **导入函数失败 ImportError**：all_data_tool.py 复制不全，缺少`build_dataset_from_file`函数定义；解决：完整替换全部代码，注意保存文件。
+2. **文件找不到 FileNotFoundError**：csv 文件路径错误、Windows 隐藏`.txt`后缀，导致程序识别不到`normal.csv`；解决：开启文件扩展名显示，核对文件名与路径。
+3. **文件夹不存在 RuntimeError**：代码自动创建文件夹逻辑缺失，保存 pth 模型时报父目录不存在；解决：手动创建`model_weight`，或在代码增加`os.makedirs(...,exist_ok=True)`自动创建目录。
+4. VSCode 代码黄色波浪警告：为静态检查插件提示，属于导入提示警告，不影响实际程序运行。
+
+## 3.6 Git 版本控制与过程档案（满足课程过程考核）
+
+第三阶段执行多次小步提交，示例提交记录：
+
+```
+git add .
+git commit -m "feat:第三阶段，完成all_data_tool数据预处理模块，mat转csv功能"
+
+git add .
+git commit -m "feat:新增fault_classify故障分类模块，网络、训练、预测接口"
+
+git add .
+git commit -m "feat:新增ae_anomaly自编码器异常检测完整模块"
+
+git add .
+git commit -m "feat:新增lstm_rul LSTM剩余寿命预测模块"
+
+git add .
+git commit -m "feat:新增test_algorithm单元测试脚本，完成整套算法训练闭环测试"
+```
+
+过程档案留存：
+
+1. 在项目根目录建立`prompt`文件夹，新建`prompt/phase3_algorithm.json`；
+2. 将第三阶段所有与 AI 交互提示词、报错调试会话复制保存到此文件；
+3. 保存单元测试成功运行的控制台截图，作为过程打卡材料。
+
+## 3.7 第三阶段交付物汇总
+
+表格
+
+| 类别 | 文件 / 产出 |
+| --- | --- |
+| 代码模块 | `all_data_tool.py`、`fault_classify.py`、`ae_anomaly.py`、`lstm_rul.py`、`test_algorithm.py` |
+| 数据产物 | `data/raw`转换 csv；`data/processed/scaler.pkl`；`data/model_weight`全部模型权重文件 |
+| 过程档案 | git 多次提交历史；`prompt/phase3_algorithm.json`提示词日志；运行成功控制台截图 |
+| 验证结果 | test_algorithm 完整运行通过，三大模型均可训练并调用预测接口 |
+
+## 3.8 阶段小结与下一阶段衔接
+
+本阶段完成从原始 mat 数据集到三大训练完成算法模块的完整链路；算法模块全部封装完成，对外提供稳定调用接口。
+
+> 
+> 第四阶段将基于本阶段产出的算法接口，开发 FastAPI 后端服务、MySQL 数据库存储、前端 UI 页面，完成上传文件‑调用算法‑结果展示‑历史记录存储的完整 B/S 业务闭环。
+
+如果你需要，我可以继续帮你写**第四阶段：系统开发与仓库规范集成**章节内容。
+
+今天 20:27
+
+请把代码写出来
+
+# 第三阶段全部完整代码
+
+> 
+> 存放位置：`khr/algorithm/` 下面 5 个 py，和项目目录结构保持一致。
+> 注意：全部复制粘贴，每个文件复制完按 `Ctrl+S`保存。
+
+## 文件 1：all_data_tool.py
+
+```
+# all_data_tool.py 合并：mat转csv + 数据预处理
+import os
+import scipy.io
+import pandas as pd
+import numpy as np
+from scipy.fft import fft
+from sklearn.preprocessing import StandardScaler
+import joblib
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MAT_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "..", "data", "mat_raw"))
+OUT_CSV_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "..", "data", "raw"))
+PROC_DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "data", "processed"))
+SCALER_SAVE_PATH = os.path.join(PROC_DATA_DIR, "scaler.pkl")
+WINDOW_SIZE = 256
+
+os.makedirs(MAT_FOLDER, exist_ok=True)
+os.makedirs(OUT_CSV_FOLDER, exist_ok=True)
+os.makedirs(PROC_DATA_DIR, exist_ok=True)
+
+# ===================== mat -> csv 转换部分 =====================
+def mat_to_csv(mat_path, out_csv_path):
+    mat_dict = scipy.io.loadmat(mat_path)
+    de_keys = [k for k in mat_dict.keys() if ("DE_time" in str(k) or "FE_time" in str(k))]
+    if len(de_keys) == 0:
+        print(f"跳过:{mat_path} 未找到DE_time/FE_time信号")
+        return False
+    key = de_keys[0]
+    signal = mat_dict[key].flatten()
+    df = pd.DataFrame({"vibration": signal})
+    df.to_csv(out_csv_path, index=False)
+    print(f"转换成功 {os.path.basename(mat_path)} -> {os.path.basename(out_csv_path)}")
+    return True
+
+def run_mat_convert():
+    """执行全部mat文件转csv"""
+    file_list = [f for f in os.listdir(MAT_FOLDER) if f.lower().endswith(".mat")]
+    print(f"检测到mat文件数量:{len(file_list)}")
+    for fname in file_list:
+        mat_file = os.path.join(MAT_FOLDER, fname)
+        base = os.path.splitext(fname)[0]
+        csv_file = os.path.join(OUT_CSV_FOLDER, f"{base}.csv")
+        mat_to_csv(mat_file, csv_file)
+    print("==== mat全部转换完成 ====\n")
+
+# ===================== 数据预处理部分 =====================
+def load_csv_signal(file_path: str) -> np.ndarray:
+    df = pd.read_csv(file_path)
+    sig = df.iloc[:, 0].dropna().values
+    return sig
+
+def signal_filter(signal: np.ndarray, win=5):
+    return np.convolve(signal, np.ones(win) / win, mode="same")
+
+def extract_time_feature(sig: np.ndarray):
+    mean_val = np.mean(sig)
+    var_val = np.var(sig)
+    rms = np.sqrt(np.mean(sig ** 2))
+    peak = np.max(np.abs(sig))
+    kurt = np.mean((sig - mean_val) ** 4) / (var_val ** 2 + 1e-8)
+    skew = np.mean((sig - mean_val) ** 3) / ((np.sqrt(var_val)) ** 3 + 1e-8)
+    return np.array([mean_val, var_val, rms, peak, kurt, skew])
+
+def extract_freq_feature(sig: np.ndarray):
+    fft_sig = np.abs(fft(sig))[:len(sig) // 2]
+    return np.array([np.mean(fft_sig), np.var(fft_sig), np.max(fft_sig)])
+
+def extract_all_feature(sig: np.ndarray):
+    t_feat = extract_time_feature(sig)
+    f_feat = extract_freq_feature(sig)
+    return np.concatenate([t_feat, f_feat])
+
+def sliding_window_sample(signal: np.ndarray, window=WINDOW_SIZE, step=128):
+    samples = []
+    for i in range(0, len(signal) - window, step):
+        seg = signal[i:i + window]
+        samples.append(seg)
+    return np.array(samples)
+
+def build_dataset_from_file(csv_path: str, label=None):
+    sig = load_csv_signal(csv_path)
+    sig = signal_filter(sig)
+    seg_list = sliding_window_sample(sig)
+    feat_list = []
+    for seg in seg_list:
+        feat = extract_all_feature(seg)
+        feat_list.append(feat)
+    feat_arr = np.array(feat_list)
+    if label is not None:
+        return feat_arr, np.full(feat_arr.shape[0], label)
+    return feat_arr
+
+def fit_and_save_scaler(X_train):
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+    joblib.dump(scaler, SCALER_SAVE_PATH)
+    return scaler
+
+def load_scaler():
+    return joblib.load(SCALER_SAVE_PATH)
+
+if __name__ == "__main__":
+    # 先执行mat转csv
+    run_mat_convert()
+    print("all_data_tool 工具模块加载完毕，可以被其他py文件import调用")
+```
+
+## 文件 2：fault_classify.py
+
+```
+import os
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix
+from all_data_tool import load_scaler
+
+# 自动创建模型保存目录
+os.makedirs("../data/model_weight", exist_ok=True)
+
+WEIGHT_PATH = "../data/model_weight/fault_cls.pth"
+INPUT_DIM = 9
+NUM_CLASS = 4
+LABEL_MAP = {0:"正常",1:"内圈故障",2:"外圈故障",3:"滚动体故障"}
+
+class FaultClsNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(INPUT_DIM,64),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(64,32),
+            nn.ReLU(),
+            nn.Linear(32,NUM_CLASS)
+        )
+    def forward(self,x):
+        return self.net(x)
+
+def train_fault_model(X,y):
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2,random_state=42)
+    scaler = load_scaler()
+    X_train = scaler.transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    Xt_train = torch.tensor(X_train,dtype=torch.float32)
+    yt_train = torch.tensor(y_train,dtype=torch.long)
+    Xt_test = torch.tensor(X_test,dtype=torch.float32)
+
+    model = FaultClsNet()
+    loss_fn = nn.CrossEntropyLoss()
+    opt = optim.Adam(model.parameters(),lr=1e-3)
+    epochs=80
+
+    for e in range(epochs):
+        model.train()
+        pred = model(Xt_train)
+        loss = loss_fn(pred,yt_train)
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+        if (e+1)%10==0:
+            print(f"FaultCls epoch{e+1},loss:{loss.item():.4f}")
+
+    model.eval()
+    with torch.no_grad():
+        out_test = model(Xt_test)
+        y_pred = torch.argmax(out_test,dim=1).numpy()
+    acc = accuracy_score(y_test,y_pred)
+    print(f"故障分类测试集准确率:{acc:.4f}")
+    print("混淆矩阵:\n",confusion_matrix(y_test,y_pred))
+
+    torch.save(model.state_dict(),WEIGHT_PATH)
+    return model
+
+def get_fault_model():
+    model = FaultClsNet()
+    if os.path.exists(WEIGHT_PATH):
+        model.load_state_dict(torch.load(WEIGHT_PATH,weights_only=True))
+    model.eval()
+    return model
+
+def predict_fault(feature_np:np.ndarray):
+    model = get_fault_model()
+    scaler = load_scaler()
+    feat_norm = scaler.transform(feature_np.reshape(-1,INPUT_DIM))
+    x = torch.tensor(feat_norm,dtype=torch.float32)
+    with torch.no_grad():
+        logits = model(x)
+        prob = torch.softmax(logits,dim=1).numpy()
+        pred_idx = np.argmax(prob,axis=1)[0]
+        conf = np.max(prob,axis=1)[0]
+    return LABEL_MAP[int(pred_idx)], float(conf)
+
+if __name__=="__main__":
+    pass
+```
+
+## 文件 3：ae_anomaly.py
+
+```
+import os
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from all_data_tool import load_scaler
+
+os.makedirs("../data/model_weight", exist_ok=True)
+WEIGHT_PATH = "../data/model_weight/ae_anomaly.pth"
+THRESHOLD_SAVE = "../data/model_weight/ae_threshold.npy"
+INPUT_DIM=9
+
+class AE(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(INPUT_DIM,32),
+            nn.ReLU(),
+            nn.Linear(32,12)
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(12,32),
+            nn.ReLU(),
+            nn.Linear(32,INPUT_DIM)
+        )
+    def forward(self,x):
+        z = self.encoder(x)
+        rec = self.decoder(z)
+        return rec
+
+def train_ae_normal_only(X_normal):
+    scaler = load_scaler()
+    X_norm = scaler.transform(X_normal)
+    Xt = torch.tensor(X_norm,dtype=torch.float32)
+    model = AE()
+    loss_fn = nn.MSELoss()
+    opt = optim.Adam(model.parameters(),lr=1e-3)
+    epochs=80
+    for e in range(epochs):
+        model.train()
+        rec = model(Xt)
+        loss = loss_fn(rec,Xt)
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+        if (e+1)%10==0:
+            print(f"AE epoch{e+1},loss:{loss.item():.4f}")
+    torch.save(model.state_dict(),WEIGHT_PATH)
+    model.eval()
+    with torch.no_grad():
+        rec_all = model(Xt)
+        err = torch.mean((rec_all-Xt)**2,dim=1).numpy()
+    threshold = np.percentile(err,95)
+    np.save(THRESHOLD_SAVE,threshold)
+    print(f"自编码器异常阈值设置为:{threshold:.4f}")
+    return model,threshold
+
+def get_ae_model_and_threshold():
+    m = AE()
+    m.load_state_dict(torch.load(WEIGHT_PATH,weights_only=True))
+    m.eval()
+    th = float(np.load(THRESHOLD_SAVE))
+    return m,th
+
+def detect_anomaly(feature_np:np.ndarray):
+    model,threshold = get_ae_model_and_threshold()
+    scaler = load_scaler()
+    feat_norm = scaler.transform(feature_np.reshape(-1,INPUT_DIM))
+    x = torch.tensor(feat_norm,dtype=torch.float32)
+    with torch.no_grad():
+        rec = model(x)
+        err = torch.mean((rec-x)**2,dim=1).numpy()[0]
+    is_anomaly = bool(err>threshold)
+    return is_anomaly, float(err)
+
+if __name__=="__main__":
+    pass
+```
+
+## 文件 4：lstm_rul.py
+
+```
+import os
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.model_selection import train_test_split
+from all_data_tool import load_scaler
+
+os.makedirs("../data/model_weight", exist_ok=True)
+WEIGHT_PATH = "../data/model_weight/lstm_rul.pth"
+SEQ_LEN = 64
+FEAT_DIM =9
+
+class LSTM_RUL(nn.Module):
+    def __init__(self,input_size=FEAT_DIM,hidden=64):
+        super().__init__()
+        self.lstm = nn.LSTM(input_size, hidden, batch_first=True)
+        self.fc = nn.Sequential(
+            nn.Linear(hidden,32),
+            nn.ReLU(),
+            nn.Linear(32,1)
+        )
+    def forward(self,x):
+        out,_ = self.lstm(x)
+        last_step = out[:,-1,:]
+        return self.fc(last_step)
+
+def create_seq_data(X_feat, rul_label, seq_len=SEQ_LEN):
+    seqs, ys = [],[]
+    for i in range(len(X_feat)-seq_len):
+        seqs.append(X_feat[i:i+seq_len,:])
+        ys.append(rul_label[i+seq_len])
+    return np.array(seqs), np.array(ys)
+
+def train_rul_model(X_all, rul_all):
+    scaler = load_scaler()
+    X_norm = scaler.transform(X_all)
+    X_seq,y_rul = create_seq_data(X_norm,rul_all,SEQ_LEN)
+    X_train,X_test,y_train,y_test = train_test_split(X_seq,y_rul,test_size=0.2,random_state=42)
+
+    Xt_train = torch.tensor(X_train,dtype=torch.float32)
+    yt_train = torch.tensor(y_train,dtype=torch.float32).unsqueeze(-1)
+
+    model = LSTM_RUL()
+    loss_fn = nn.MSELoss()
+    opt = optim.Adam(model.parameters(),lr=1e-3)
+    epochs=100
+    for e in range(epochs):
+        model.train()
+        pred = model(Xt_train)
+        loss = loss_fn(pred,yt_train)
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+        if (e+1)%20==0:
+            print(f"LSTM RUL epoch{e+1},loss:{loss.item():.4f}")
+    torch.save(model.state_dict(),WEIGHT_PATH)
+    return model
+
+def get_rul_model():
+    m = LSTM_RUL()
+    if os.path.exists(WEIGHT_PATH):
+        m.load_state_dict(torch.load(WEIGHT_PATH,weights_only=True))
+    m.eval()
+    return m
+
+def predict_rul(seq_feature_np:np.ndarray):
+    model = get_rul_model()
+    scaler = load_scaler()
+    feat_norm = scaler.transform(seq_feature_np)
+    x = torch.tensor(feat_norm[np.newaxis,...],dtype=torch.float32)
+    with torch.no_grad():
+        pred = model(x)
+    return float(pred.squeeze().item())
+
+if __name__=="__main__":
+    pass
+```
+
+## 文件 5：test_algorithm.py（单元测试入口）
+
+```
+import numpy as np
+from all_data_tool import build_dataset_from_file,fit_and_save_scaler
+from fault_classify import train_fault_model,predict_fault
+from ae_anomaly import train_ae_normal_only,detect_anomaly
+from lstm_rul import train_rul_model,predict_rul
+
+if __name__=="__main__":
+    print("=======算法模块单元测试======")
+    csv_normal = "../data/raw/normal.csv"
+    csv_ir = "../data/raw/inner.csv"
+
+    feat_norm,_ = build_dataset_from_file(csv_normal,label=0)
+    feat_ir,_ = build_dataset_from_file(csv_ir,label=1)
+
+    all_feat = np.concatenate([feat_norm,feat_ir])
+    fit_and_save_scaler(all_feat)
+
+    X_cls = np.concatenate([feat_norm,feat_ir])
+    y_cls = np.hstack([np.zeros(len(feat_norm)),np.ones(len(feat_ir))])
+    train_fault_model(X_cls,y_cls)
+    fault_name,conf = predict_fault(feat_ir[0])
+    print(f"故障诊断结果：{fault_name},置信度={conf:.3f}")
+
+    train_ae_normal_only(feat_norm)
+    ano_flag,err = detect_anomaly(feat_ir[0])
+    print(f"异常检测：是否异常={ano_flag},重构误差={err:.4f}")
+
+    dummy_rul = np.linspace(100,0,len(all_feat))
+    train_rul_model(all_feat,dummy_rul)
+    seq_test = all_feat[0:64,:]
+    rul_pred = predict_rul(seq_test)
+    print(f"LSTM预测剩余寿命：{rul_pred:.2f}")
+
+    print("====全部算法模块运行完成，可等待后端FastAPI调用====")
+```
+
+## 运行步骤
+
+1. 把 CWRU 的`.mat`放入 `data/mat_raw`
+2. 终端进入 algorithm 目录
+
+```
+cd algorithm
+python all_data_tool.py
+```
+
+3. `data/raw`中将生成的 csv 重命名为 `normal.csv`、`inner.csv`
+4. 执行单元测试训练模型
+
+```
+python test_algorithm.py
+```
+
+> 
+> 运行成功后，`data/model_weight`生成模型权重，`data/processed`生成 scaler.pkl。

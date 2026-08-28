@@ -1,0 +1,590 @@
+请完成前后端接口和数据库的开发及基础功能调试，并把代码写出来
+
+# 第四阶段：系统开发与仓库规范集成
+
+> 
+> 本阶段完成：MySQL 数据库表设计、FastAPI 后端接口、简单前端页面、前后端联调；算法模块直接复用第三阶段`algorithm/`下全部代码。
+> 项目目录总览
+
+```
+project_root
+├─ algorithm/                 #第三阶段算法代码
+│   ├─ all_data_tool.py
+│   ├─ fault_classify.py
+│   ├─ ae_anomaly.py
+│   ├─ lstm_rul.py
+│   └─ test_algorithm.py
+├─ data/
+│   ├─ mat_raw/
+│   ├─ raw/
+│   ├─ processed/
+│   └─ model_weight/
+├─ backend/                   #【新增后端代码】
+│   ├─ main_api.py            #FastAPI主服务
+│   ├─ db.py                  #数据库连接
+│   └─ models.py              #数据库表ORM模型
+├─ frontend/                  #【新增前端页面】
+│   └─ index.html
+├─ prompt/
+└─ requirements.txt
+```
+
+## 1 依赖包 requirements.txt
+
+放到项目根目录
+
+```
+fastapi
+uvicorn
+pymysql
+sqlalchemy
+pandas
+numpy
+torch
+scipy
+scikit-learn
+joblib
+python-multipart
+```
+
+安装：
+
+```
+pip install -r requirements.txt
+```
+
+## 2 MySQL 数据库设计
+
+> 
+> 需要本地提前启动 MySQL，新建数据库：`bearing_ops_db`
+
+```
+CREATE DATABASE bearing_ops_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE bearing_ops_db;
+
+-- 1.原始振动数据表
+CREATE TABLE raw_vibration_data (
+    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+    file_name VARCHAR(255) NOT NULL COMMENT '上传文件名',
+    upload_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
+    sample_count INT COMMENT '样本总点数',
+    file_save_path VARCHAR(500) COMMENT '服务器存储csv路径'
+) COMMENT='上传原始振动文件记录表';
+
+-- 2.故障诊断结果表
+CREATE TABLE fault_diagnosis_record (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    raw_data_id INT NOT NULL COMMENT '关联原始数据表id',
+    fault_type VARCHAR(50) COMMENT '故障类别：正常/内圈故障/外圈故障/滚动体故障',
+    confidence FLOAT COMMENT '预测置信度',
+    diagnose_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(raw_data_id) REFERENCES raw_vibration_data(id)
+) COMMENT='故障诊断历史记录';
+
+--3.剩余寿命预测记录表
+CREATE TABLE rul_predict_record (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    raw_data_id INT NOT NULL,
+    rul_value FLOAT COMMENT '预测剩余寿命',
+    suggest_maintain TEXT COMMENT '维护建议',
+    predict_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(raw_data_id) REFERENCES raw_vibration_data(id)
+) COMMENT='剩余寿命预测记录';
+
+--4.异常告警记录表
+CREATE TABLE anomaly_alert_record (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    raw_data_id INT NOT NULL,
+    is_anomaly TINYINT COMMENT '0正常 1异常',
+    recon_error FLOAT COMMENT '重构误差',
+    alert_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(raw_data_id) REFERENCES raw_vibration_data(id)
+) COMMENT='自编码器异常告警记录';
+```
+
+## 3 后端代码 backend 文件夹
+
+### backend/db.py 数据库连接
+
+```
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+# 修改这里为你本机mysql账号密码
+MYSQL_USER = "root"
+MYSQL_PWD = "123456"
+MYSQL_HOST = "127.0.0.1"
+MYSQL_PORT = 3306
+MYSQL_DB = "bearing_ops_db"
+
+SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PWD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4"
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+
+### backend/models.py ORM 模型
+
+```
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text
+from sqlalchemy.sql import func
+from backend.db import Base
+
+class RawVibrationData(Base):
+    __tablename__ = "raw_vibration_data"
+    id = Column(Integer, primary_key=True, index=True)
+    file_name = Column(String(255), nullable=False)
+    upload_time = Column(DateTime, server_default=func.now())
+    sample_count = Column(Integer)
+    file_save_path = Column(String(500))
+
+class FaultDiagnosisRecord(Base):
+    __tablename__ = "fault_diagnosis_record"
+    id = Column(Integer, primary_key=True)
+    raw_data_id = Column(Integer)
+    fault_type = Column(String(50))
+    confidence = Column(Float)
+    diagnose_time = Column(DateTime, server_default=func.now())
+
+class RulPredictRecord(Base):
+    __tablename__ = "rul_predict_record"
+    id = Column(Integer, primary_key=True)
+    raw_data_id = Column(Integer)
+    rul_value = Column(Float)
+    suggest_maintain = Column(Text)
+    predict_time = Column(DateTime, server_default=func.now())
+
+class AnomalyAlertRecord(Base):
+    __tablename__ = "anomaly_alert_record"
+    id = Column(Integer, primary_key=True)
+    raw_data_id = Column(Integer)
+    is_anomaly = Column(Integer)
+    recon_error = Column(Float)
+    alert_time = Column(DateTime, server_default=func.now())
+```
+
+### backend/main_api.py FastAPI 主服务
+
+> 
+> 核心接口：文件上传接口、执行全部算法诊断接口、查询全部历史记录接口
+
+```
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(__file__, "../..")))
+
+from fastapi import FastAPI, UploadFile, File, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+import pandas as pd
+import numpy as np
+
+from backend.db import get_db, engine
+from backend.models import Base, RawVibrationData, FaultDiagnosisRecord, RulPredictRecord, AnomalyAlertRecord
+from algorithm.all_data_tool import load_csv_signal, signal_filter, sliding_window_sample, extract_all_feature
+from algorithm.fault_classify import predict_fault
+from algorithm.ae_anomaly import detect_anomaly
+from algorithm.lstm_rul import predict_rul, SEQ_LEN
+
+Base.metadata.create_all(bind=engine)
+app = FastAPI(title="轴承预测性维护平台API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+UPLOAD_SAVE_DIR = os.path.abspath(os.path.join(__file__, "../../data/upload"))
+os.makedirs(UPLOAD_SAVE_DIR, exist_ok=True)
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """上传振动csv文件，保存文件+写入原始数据表"""
+    save_path = os.path.join(UPLOAD_SAVE_DIR, file.filename)
+    with open(save_path, "wb") as f:
+        f.write(await file.read())
+    df = pd.read_csv(save_path)
+    total_samples = len(df)
+    db_record = RawVibrationData(
+        file_name=file.filename,
+        sample_count=total_samples,
+        file_save_path=save_path
+    )
+    db.add(db_record)
+    db.commit()
+    db.refresh(db_record)
+    return {"code": 0, "msg": "上传成功", "raw_data_id": db_record.id}
+
+@app.post("/api/run_diagnose")
+async def run_diagnose(raw_data_id: int, db: Session = Depends(get_db)):
+    """执行整套算法：故障分类、异常检测、RUL寿命预测，结果入库返回前端"""
+    raw_info = db.query(RawVibrationData).filter(RawVibrationData.id == raw_data_id).first()
+    if not raw_info:
+        return JSONResponse(content={"code": -1, "msg": "数据ID不存在"})
+    sig = load_csv_signal(raw_info.file_save_path)
+    sig = signal_filter(sig)
+    seg_samples = sliding_window_sample(sig, window=256, step=128)
+    if len(seg_samples) < SEQ_LEN:
+        return {"code":-1,"msg":"数据样本过短，不足以执行LSTM预测"}
+
+    feat_list = []
+    for seg in seg_samples:
+        feat = extract_all_feature(seg)
+        feat_list.append(feat)
+    feat_arr = np.array(feat_list)
+
+    #1 故障分类，取第一个片段做预测演示
+    fault_name, conf = predict_fault(feat_arr[0])
+    fault_db = FaultDiagnosisRecord(
+        raw_data_id=raw_data_id,
+        fault_type=fault_name,
+        confidence=conf
+    )
+    db.add(fault_db)
+
+    #2 自编码器异常检测
+    ano_flag, err = detect_anomaly(feat_arr[0])
+    ano_db = AnomalyAlertRecord(
+        raw_data_id=raw_data_id,
+        is_anomaly=1 if ano_flag else 0,
+        recon_error=err
+    )
+    db.add(ano_db)
+
+    #3 LSTM剩余寿命，取连续SEQ_LEN长度序列
+    seq_input = feat_arr[0:SEQ_LEN, :]
+    rul_num = predict_rul(seq_input)
+    if rul_num <20:
+        suggest = "警告：剩余寿命较低，请尽快安排停机检修！"
+    elif rul_num<60:
+        suggest = "注意，设备逐步老化，密切监测振动状态。"
+    else:
+        suggest = "设备状态尚可，可以继续运行，定期巡检。"
+    rul_db = RulPredictRecord(
+        raw_data_id=raw_data_id,
+        rul_value=rul_num,
+        suggest_maintain=suggest
+    )
+    db.add(rul_db)
+    db.commit()
+
+    return {
+        "code":0,
+        "data":{
+            "fault_type":fault_name,
+            "confidence":round(conf,3),
+            "is_anomaly":ano_flag,
+            "recon_error":round(err,4),
+            "rul_value":round(rul_num,2),
+            "suggest":suggest
+        }
+    }
+
+@app.get("/api/get_history")
+async def get_history(db:Session=Depends(get_db)):
+    """查询全部历史诊断记录"""
+    query = db.query(
+        RawVibrationData.file_name,
+        RawVibrationData.upload_time,
+        FaultDiagnosisRecord.fault_type,
+        FaultDiagnosisRecord.confidence,
+        AnomalyAlertRecord.is_anomaly,
+        RulPredictRecord.rul_value,
+        RulPredictRecord.suggest_maintain
+    ).join(FaultDiagnosisRecord, RawVibrationData.id == FaultDiagnosisRecord.raw_data_id)\
+        .join(AnomalyAlertRecord, RawVibrationData.id == AnomalyAlertRecord.raw_data_id)\
+        .join(RulPredictRecord, RawVibrationData.id == RulPredictRecord.raw_data_id)\
+        .order_by(RawVibrationData.upload_time.desc()).all()
+    res = []
+    for row in query:
+        res.append({
+            "filename":row.file_name,
+            "upload_time":str(row.upload_time),
+            "fault_type":row.fault_type,
+            "confidence":row.confidence,
+            "is_anomaly":bool(row.is_anomaly),
+            "rul_value":row.rul_value,
+            "suggest":row.suggest_maintain
+        })
+    return {"code":0,"list":res}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+```
+
+## 4 前端页面 frontend/index.html
+
+> 
+> 简单页面，实现：文件上传、点击执行诊断、结果展示、历史记录查询，使用 CDN 引入 echarts 绘制波形
+
+```
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>轴承预测性运维监测平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        *{box-sizing: border-box;font-family:Microsoft Yahei;}
+        body{max-width:1200px;margin:20px auto;padding:0 20px;}
+        .block{border:1px solid #ccc;padding:16px;margin:12px 0;border-radius:6px;}
+        button{padding:8px 16px;cursor:pointer;background:#2b7bcc;color:white;border:none;border-radius:4px;}
+        #result{background:#f4f7fb;padding:10px;margin:8px 0;white-space:pre-line;}
+        #chart{width:100%;height:300px;border:1px solid #ddd;}
+        table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;}
+        table th,table td{border:1px solid #aaa;padding:6px;}
+    </style>
+</head>
+<body>
+<h2>滚动轴承预测性维护监测平台</h2>
+<div class="block">
+    <h4>1.上传振动CSV数据文件</h4>
+    <input type="file" id="fileInput" accept=".csv">
+    <button onclick="uploadFile()">上传文件</button>
+    <div id="uploadMsg"></div>
+</div>
+
+<div class="block">
+    <h4>2.执行智能诊断（输入上传返回的raw_data_id）</h4>
+    <input type="number" id="rawIdInput" placeholder="raw_data_id">
+    <button onclick="runDiagnose()">运行故障&异常&寿命预测</button>
+    <div id="result"></div>
+</div>
+
+<div class="block">
+    <h4>振动波形预览</h4>
+    <div id="chart"></div>
+</div>
+
+<div class="block">
+    <h4>3.查询全部历史诊断记录</h4>
+    <button onclick="loadHistory()">刷新历史记录</button>
+    <div id="historyBox"></div>
+</div>
+
+<script>
+const apiBase = "http://127.0.0.1:8000/api";
+let myChart = echarts.init(document.getElementById('chart'));
+let lastRawId = null;
+
+async function uploadFile(){
+    const file = document.getElementById("fileInput").files[0];
+    if(!file){alert("请选择csv文件");return;}
+    let fd = new FormData();
+    fd.append("file",file);
+    let resp = await fetch(apiBase+"/upload",{method:"POST",body:fd});
+    let json = await resp.json();
+    document.getElementById("uploadMsg").innerText = JSON.stringify(json,null,2);
+    if(json.code===0){
+        lastRawId = json.raw_data_id;
+        document.getElementById("rawIdInput").value = lastRawId;
+    }
+}
+
+async function runDiagnose(){
+    let rid = Number(document.getElementById("rawIdInput").value);
+    if(!rid){alert("请输入raw_data_id");return;}
+    let resp = await fetch(`${apiBase}/run_diagnose?raw_data_id=${rid}`,{method:"POST"});
+    let json = await resp.json();
+    document.getElementById("result").innerText = JSON.stringify(json.data,null,2);
+}
+
+async function loadHistory(){
+    let resp = await fetch(apiBase+"/get_history");
+    let json = await resp.json();
+    let html = `<table><tr>
+    <th>文件名</th><th>上传时间</th><th>故障类型</th><th>置信度</th><th>是否异常</th><th>预测RUL</th><th>维护建议</th>
+    </tr>`;
+    json.list.forEach(item=>{
+        html += `<tr>
+        <td>${item.filename}</td>
+        <td>${item.upload_time}</td>
+        <td>${item.fault_type}</td>
+        <td>${item.confidence}</td>
+        <td>${item.is_anomaly?"是":"否"}</td>
+        <td>${item.rul_value.toFixed(2)}</td>
+        <td>${item.suggest}</td>
+        </tr>`;
+    })
+    html += "</table>";
+    document.getElementById("historyBox").innerHTML = html;
+}
+
+window.onresize = ()=>{myChart.resize()}
+</script>
+</body>
+</html>
+```
+
+## 5 基础功能调试步骤
+
+### 步骤 1：确认算法已经训练完成
+
+执行第三阶段，生成模型权重：
+
+```
+cd algorithm
+python test_algorithm.py
+```
+
+> 
+> 保证`data/model_weight`下面存在 `.pth`、`.npy`，`processed/scaler.pkl`存在。
+
+### 步骤 2：修改数据库账号密码
+
+打开`backend/db.py`，修改`MYSQL_USER`、`MYSQL_PWD`为你本机 MySQL 账号密码。
+执行 SQL 脚本，提前建好`bearing_ops_db`数据库。
+
+### 步骤 3：启动后端 FastAPI 服务
+
+```
+cd backend
+python main_api.py
+```
+
+> 
+> 服务地址：`http://127.0.0.1:8000`，接口文档地址 `http://127.0.0.1:8000/docs`
+
+### 步骤 4：打开前端页面
+
+直接双击打开 `frontend/index.html`（浏览器打开）
+
+### 业务测试流程（完整闭环）
+
+1. 选择一个轴承 csv 振动文件上传；页面返回`raw_data_id`；
+2. 将 id 填入输入框，点击【运行故障 & 异常 & 寿命预测】；
+3. 后端调用三大算法模块，计算结果写入 MySQL 数据库，返回诊断结果展示页面；
+4. 点击【刷新历史记录】读取数据库全部历史台账。
+
+## 6 本阶段常见 Bug 记录（写进报告 AI 出错案例）
+
+1. **模块导入报错 ModuleNotFoundError**：FastAPI 运行找不到 algorithm；解决：`sys.path.append`把项目根目录加入搜索路径，代码中已处理。
+2. **数据库连接失败 Access denied**：`db.py`的 mysql 账号密码与本地不一致，核对账号密码，确认 mysql 服务启动。
+3. **CORS 跨域报错**：前端 html 直接打开，访问后端接口跨域，代码已经配置`CORSMiddleware`允许全部来源。
+4. **样本不足报错**：上传太短 csv，LSTM 需要 SEQ_LEN=64 条特征样本；需要上传足够长振动时序 csv。
+5. **模型权重找不到 FileNotFound**：没有先运行`test_algorithm.py`训练生成模型文件。
+
+## 7 Git 提交示例（课程过程档案）
+
+```
+git add backend/ frontend/ requirements.txt
+git commit -m "feat:第四阶段开发完成，FastAPI后端接口、mysql数据库、前端页面，实现上传-诊断-查询历史完整业务流程"
+
+
+请帮我把 mysql 换成  SQlite
+# 把 MySQL 换成 SQLite（无需安装数据库软件，单文件数据库）
+
+> 
+> SQLite 文件型数据库，**不用启动服务、不用账号密码**，非常适合课程设计，直接改少量后端代码即可，前端完全不用改。
+
+## 1、修改 backend/db.py（全部替换）
+
+```
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import os
+
+BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+# 数据库文件存放在backend文件夹下，文件名 bearing.db
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(BASE_PATH,'bearing.db')}"
+
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False}
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+
+## 2、models.py 完全不用改
+
+ORM 模型代码不需要任何修改，SQLAlchemy 自动适配 SQLite。
+
+## 3、main_api.py 不用改任何一行代码
+
+> 
+> 启动后端的时候，程序会**自动生成 bearing.db 文件并且自动建四张数据表**，不需要你手动执行建表 SQL！
+
+## 4、requirements.txt 删除 pymysql
+
+原来：
+
+```
+fastapi
+uvicorn
+pymysql
+sqlalchemy
+pandas
+numpy
+torch
+scipy
+scikit-learn
+joblib
+python-multipart
+```
+
+改成（删掉 pymysql）：
+
+```
+fastapi
+uvicorn
+sqlalchemy
+pandas
+numpy
+torch
+scipy
+scikit-learn
+joblib
+python-multipart
+```
+
+卸载不需要的库（可选）
+
+```
+pip uninstall pymysql
+```
+
+# 更新后的第四阶段完整启动流程（SQLite 版）
+
+1. 先训练算法模型（必须先跑）
+
+```
+cd algorithm
+python test_algorithm.py
+```
+
+2. 启动后端
+
+```
+cd backend
+python main_api.py
+```
+
+启动流程
+cd backend
+conda activate cv_tutorial
+python main_api.py
+前端cd "C:\Users\ASUS Vivo book\Desktop\khr\frontend" python -m http.server 8080
+```
