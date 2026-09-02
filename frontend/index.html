@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>滚动轴承预测性维护监测平台</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", system-ui, sans-serif;
+        }
+        body {
+            background-color: #f0f2f5;
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header-bar{
+            background:#1e3a8a;
+            color:#fff;
+            padding:16px 24px;
+            border-radius:10px;
+            margin-bottom:24px;
+        }
+        .header-bar h1{
+            font-size:24px;
+            margin-bottom:6px;
+        }
+        .header-desc{
+            font-size:13px;
+            opacity:0.85;
+        }
+        .card {
+            background: #ffffff;
+            border-radius:12px;
+            box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+            padding:20px 24px;
+            margin-bottom:20px;
+        }
+        .card h3{
+            color:#1f2937;
+            margin-bottom:16px;
+            font-size:17px;
+            border-left:4px solid #2563eb;
+            padding-left:10px;
+        }
+        .btn{
+            padding:9px 18px;
+            border:none;
+            border-radius:6px;
+            cursor:pointer;
+            font-size:14px;
+            margin:0 6px 8px 0;
+            transition:0.2s;
+        }
+        .btn-primary{
+            background-color:#2563eb;
+            color:#fff;
+        }
+        .btn-primary:hover{
+            background-color:#1d4ed8;
+        }
+        .btn-warn{
+            background-color:#f59e0b;
+            color:#fff;
+        }
+        .btn:disabled{
+            background:#94a3b8;
+            cursor:not-allowed;
+        }
+        input[type="file"]{
+            margin-right:10px;
+        }
+        input[type="number"]{
+            padding:8px 12px;
+            border:1px solid #d1d5db;
+            border-radius:6px;
+            width:200px;
+            font-size:14px;
+        }
+        .msg-success{
+            color:#059669;
+            background:#ecfdf5;
+            padding:10px 14px;
+            border-radius:6px;
+            margin:10px 0;
+        }
+        .msg-error{
+            color:#dc2626;
+            background:#fef2f2;
+            padding:10px 14px;
+            border-radius:6px;
+            margin:10px 0;
+        }
+        .msg-info{
+            color:#1d4ed8;
+            background:#eff6ff;
+            padding:10px 14px;
+            border-radius:6px;
+            margin:10px 0;
+        }
+        #chart{
+            width:100%;
+            height:360px;
+            border:1px solid #e5e7eb;
+            border-radius:8px;
+        }
+        .result-panel{
+            background:#f8fafc;
+            border:1px solid #e2e8f0;
+            border-radius:8px;
+            padding:18px;
+            margin-top:10px;
+        }
+        .res-normal{
+            border-left:5px solid #10b981;
+        }
+        .res-abnormal{
+            border-left:5px solid #ef4444;
+        }
+        .result-item{
+            margin:8px 0;
+            font-size:14.5px;
+        }
+        table{
+            width:100%;
+            border-collapse: collapse;
+            margin-top:12px;
+            font-size:13px;
+        }
+        table th{
+            background:#eff6ff;
+            color:#1e40af;
+        }
+        table th,table td{
+            border:1px solid #e5e7eb;
+            padding:9px 10px;
+            text-align:center;
+        }
+        table tbody tr:nth-child(even){
+            background-color:#f9fafb;
+        }
+        .table-wrap{
+            max-height:340px;
+            overflow:auto;
+        }
+        .status-bar{
+            font-size:13px;
+            color:#4b5563;
+            margin-top:8px;
+        }
+        .loading{
+            display:inline-block;
+            width:14px;height:14px;
+            border:2px solid #ccc;
+            border-top-color:#2563eb;
+            border-radius:50%;
+            animation:spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+<div class="header-bar">
+    <h1>滚动轴承预测性维护监测平台</h1>
+    <div class="header-desc">后端服务：http://127.0.0.1:8000 &nbsp;&nbsp;前端服务：http://127.0.0.1:8080 | 轴承故障智能诊断 + 异常检测 + RUL剩余寿命预测</div>
+</div>
+
+<div class="card">
+    <h3>1. 上传振动CSV数据文件</h3>
+    <div>
+        <input type="file" id="fileInput" accept=".csv">
+        <button class="btn btn-primary" onclick="drawWave()">预览波形</button>
+        <button class="btn btn-warn" onclick="clearChart()">清空波形</button>
+        <button class="btn btn-primary" id="uploadBtn" onclick="uploadFile()">上传文件</button>
+    </div>
+    <div id="uploadMsg"></div>
+    <div class="status-bar" id="statusText">就绪，请选择CSV振动文件</div>
+</div>
+
+<div class="card">
+    <h3>振动时域波形预览（支持框选缩放，右上角工具重置视图）</h3>
+    <div id="chart"></div>
+</div>
+
+<div class="card">
+    <h3>2. 智能故障诊断</h3>
+    <div>
+        <label>RawDataID：</label>
+        <input type="number" id="rawIdInput" placeholder="输入上传返回ID">
+        <button class="btn btn-primary" id="diagBtn" onclick="runDiagnose()">执行诊断</button>
+    </div>
+    <div class="result-panel" id="resultPanel">
+        <div class="result-item">等待执行诊断...</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>3. 历史诊断记录</h3>
+    <button class="btn btn-primary" onclick="loadHistory()">刷新历史记录</button>
+    <div class="table-wrap" id="historyBox"></div>
+</div>
+
+<script>
+const apiBase = "http://127.0.0.1:8000/api";
+let myChart = echarts.init(document.getElementById('chart'));
+let lastRawId = null;
+
+/** 修改状态栏文字 */
+function setStatus(text){
+    document.getElementById("statusText").innerText = text;
+}
+
+/** 消息提示 */
+function showMsg(text, isError=false){
+    const box = document.getElementById("uploadMsg");
+    let cls = isError ? "msg-error" : "msg-success";
+    box.innerHTML = `<div class="${cls}">${text}</div>`;
+}
+
+/** 清空波形图表 */
+function clearChart(){
+    myChart.clear();
+    document.getElementById("fileInput").value = '';
+    setStatus("已清空波形");
+}
+
+/** 绘制波形 */
+function drawWave(){
+    const fileDom = document.getElementById("fileInput");
+    const file = fileDom.files[0];
+    if(!file){
+        showMsg("请先选择CSV振动文件",true);
+        return;
+    }
+    setStatus("正在解析文件...");
+    const reader = new FileReader();
+    reader.onload = function(e){
+        const text = e.target.result;
+        const lines = text.trim().split(/\r?\n/);
+        const waveData = [];
+        for(let i=1;i<lines.length;i++){
+            const row = lines[i].trim();
+            if(!row) continue;
+            const cols = row.split(",");
+            const val = parseFloat(cols[0]);
+            if(!Number.isNaN(val)) waveData.push(val);
+        }
+        console.log("解析得到波形点数：", waveData.length);
+        if(waveData.length ===0){
+            showMsg("未能解析到振动数据，请检查CSV，首列表头为vibration",true);
+            setStatus("解析失败");
+            return;
+        }
+        //降采样
+        const maxShow = 1600;
+        let showArr = waveData;
+        if(showArr.length>maxShow){
+            const step = Math.floor(showArr.length/maxShow);
+            showArr = showArr.filter((_,idx)=> idx%step ===0);
+        }
+        const opt = {
+            title:{text:"振动时域波形",left:"center"},
+            tooltip:{trigger:"axis"},
+            toolbox:{
+                show:true,
+                feature:{
+                    dataZoom:{yAxisIndex:false},
+                    restore:{},
+                    saveAsImage:{}
+                }
+            },
+            grid:{left:"3%",right:"4%",bottom:"3%",containLabel:true},
+            xAxis:{type:"value",name:"采样点序号"},
+            yAxis:{type:"value",name:"振动幅值"},
+            series:[{
+                name:"振动信号",
+                type:"line",
+                data: showArr,
+                showSymbol:false,
+                lineStyle:{width:1.2,color:"#2563eb"}
+            }]
+        };
+        myChart.setOption(opt);
+        showMsg(`波形解析成功，原始点数${waveData.length}，预览点数${showArr.length}`);
+        setStatus("波形绘制完成");
+    }
+    reader.readAsText(file);
+}
+
+/** 上传文件 */
+async function uploadFile(){
+    const btn = document.getElementById("uploadBtn");
+    const file = document.getElementById("fileInput").files[0];
+    if(!file){
+        showMsg("请选择CSV文件",true);
+        return;
+    }
+    btn.disabled=true;
+    showMsg("正在上传...");
+    setStatus("请求后端上传接口...");
+    try{
+        const fd = new FormData();
+        fd.append("file",file);
+        const resp = await fetch(`${apiBase}/upload`,{method:"POST",body:fd});
+        const json = await resp.json();
+        if(json.code===0){
+            lastRawId = json.raw_data_id;
+            document.getElementById("rawIdInput").value = lastRawId;
+            showMsg(`上传成功！raw_data_id = ${lastRawId}`);
+            setStatus(`上传完成，ID：${lastRawId}`);
+        }else{
+            showMsg(`上传失败：${json.msg}`,true);
+            setStatus("上传失败");
+        }
+    }catch(err){
+        showMsg(`网络错误，请确认后端已启动：${err.message}`,true);
+        setStatus("网络异常");
+    }finally{
+        btn.disabled=false;
+    }
+}
+
+/** 运行诊断 */
+async function runDiagnose(){
+    const rid = Number(document.getElementById("rawIdInput").value);
+    const diagBtn = document.getElementById("diagBtn");
+    const resPanel = document.getElementById("resultPanel");
+    if(!rid || rid<=0){
+        resPanel.innerHTML = `<div class="result-item" style="color:#dc2626;">请输入有效的raw_data_id</div>`;
+        return;
+    }
+    diagBtn.disabled=true;
+    setStatus("正在执行算法诊断，请等待...");
+    resPanel.innerHTML = `<div class="result-item"><span class="loading"></span> 算法运算中，正在执行故障分类、异常检测、RUL寿命预测...</div>`;
+    try{
+        const resp = await fetch(`${apiBase}/run_diagnose?raw_data_id=${rid}`,{method:"POST"});
+        const json = await resp.json();
+        if(json.code!==0){
+            resPanel.innerHTML = `<div class="result-item" style="color:#dc2626;">诊断失败：${json.msg}</div>`;
+            setStatus("诊断执行失败");
+            return;
+        }
+        const d = json.data;
+        //根据是否异常切换边框样式
+        let cssClass = d.is_anomaly ? "res-abnormal" : "res-normal";
+        let anoText = d.is_anomaly ? `<span style="color:#dc2626;font-weight:bold">检测到设备异常⚠️</span>` : `<span style="color:#059669;font-weight:bold">设备状态正常✅</span>`;
+        let html = `
+        <div class="result-item"><b>故障类型：</b>${d.fault_type}</div>
+        <div class="result-item"><b>故障置信度：</b>${d.confidence}</div>
+        <div class="result-item"><b>异常检测结果：</b>${anoText}</div>
+        <div class="result-item"><b>重构误差：</b>${d.recon_error}</div>
+        <div class="result-item"><b>预测剩余寿命RUL：</b>${d.rul_value}</div>
+        <div class="result-item"><b>维护建议：</b>${d.suggest}</div>
+        `;
+        resPanel.className = "result-panel " + cssClass;
+        resPanel.innerHTML = html;
+        setStatus("诊断全部完成");
+    }catch(err){
+        resPanel.className = "result-panel";
+        resPanel.innerHTML = `<div class="result-item" style="color:#dc2626;">请求异常，请确认后端服务正常运行 ${err.message}</div>`;
+        setStatus("请求异常");
+    }finally{
+        diagBtn.disabled=false;
+    }
+}
+
+/** 加载历史 */
+async function loadHistory(){
+    const box = document.getElementById("historyBox");
+    box.innerHTML = "加载中...";
+    setStatus("正在读取历史记录");
+    try{
+        const resp = await fetch(`${apiBase}/get_history`);
+        const json = await resp.json();
+        if(json.code!==0){
+            box.innerHTML = `<div style="color:#dc2626;">加载失败</div>`;
+            setStatus("读取历史失败");
+            return;
+        }
+        let html = `<table>
+        <tr><th>文件名</th><th>上传时间</th><th>故障类型</th><th>置信度</th><th>是否异常</th><th>预测RUL</th><th>维护建议</th></tr>`;
+        json.list.forEach(item=>{
+            html += `<tr>
+                <td>${item.filename}</td>
+                <td>${item.upload_time}</td>
+                <td>${item.fault_type}</td>
+                <td>${item.confidence}</td>
+                <td>${item.is_anomaly ? "是":"否"}</td>
+                <td>${Number(item.rul_value).toFixed(2)}</td>
+                <td>${item.suggest}</td>
+            </tr>`;
+        });
+        html += "</table>";
+        box.innerHTML = html;
+        setStatus("历史记录加载完毕");
+    }catch(err){
+        box.innerHTML = `<div style="color:#dc2626;">网络异常：${err.message}</div>`;
+        setStatus("读取历史网络异常");
+    }
+}
+
+//窗口自适应
+window.addEventListener('resize',()=>{
+    myChart.resize();
+})
+</script>
+</body>
+</html>
